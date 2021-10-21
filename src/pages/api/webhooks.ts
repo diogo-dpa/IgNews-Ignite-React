@@ -25,7 +25,11 @@ export const config = {
 };
 
 // Set é como se fosse um array mas nao pode duplicados
-const relevantEvents = new Set(["checkout.session.completed"]);
+const relevantEvents = new Set([
+	"checkout.session.completed",
+	"customer.subscription.updated",
+	"customer.subscription.deleted",
+]);
 
 export default async (req: NextApiRequest, res: NextApiResponse) => {
 	console.log("evento recebido");
@@ -52,13 +56,26 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
 		if (relevantEvents.has(type)) {
 			try {
 				switch (type) {
+					case "customer.subscription.updated":
+					case "customer.subscription.deleted":
+						// Personaliza o evento de Subscription
+						const subscription = event.data.object as Stripe.Subscription;
+
+						await saveSubscription(
+							subscription.id,
+							subscription.customer.toString(),
+							false
+						);
+
+						break;
 					case "checkout.session.completed":
 						const checkoutSession = event.data
 							.object as Stripe.Checkout.Session;
 
 						await saveSubscription(
 							checkoutSession.subscription.toString(), // ja converte para string
-							checkoutSession.customer.toString() // ja converte para string
+							checkoutSession.customer.toString(), // ja converte para string
+							true
 						);
 						break;
 					default:

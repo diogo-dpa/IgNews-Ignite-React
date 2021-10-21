@@ -5,7 +5,8 @@ import { stripe } from "../../../services/stripe";
 // Função para salvar as informações no banco de dados
 export async function saveSubscription(
 	subscriptionId: string,
-	customerId: string
+	customerId: string,
+	createAction: boolean = false
 ) {
 	// Buscar o usuario no banco do Fauna com o ID (customerId)
 	const userRef = await fauna.query(
@@ -31,8 +32,30 @@ export async function saveSubscription(
 		price_id: subscription.items.data[0].price.id, // qual produto
 	};
 
-	//Salvar os dados da subscription no FaunaDB
-	await fauna.query(
-		q.Create(q.Collection("subscriptions"), { data: subscriptionData })
-	);
+	if (createAction) {
+		//Salvar os dados da subscription no FaunaDB
+		await fauna.query(
+			q.Create(q.Collection("subscriptions"), { data: subscriptionData })
+		);
+	} else {
+		// Atualizar
+		q.Replace(
+			// Replace substitui por completo o registro: recebe 2 parametros
+			q.Select(
+				// busca o dado para ser trocado
+				"ref",
+				q.Get(
+					q.Match(
+						// Where
+						q.Index("subscription_by_id"),
+						subscription.id
+					)
+				)
+			),
+			{
+				// novo dado
+				data: subscriptionData,
+			}
+		);
+	}
 }
