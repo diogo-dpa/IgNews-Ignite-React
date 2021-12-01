@@ -3,6 +3,8 @@ import NextAuth from "next-auth";
 import Providers from "next-auth/providers";
 import { fauna } from "../../../services/fauna";
 
+// Não podemos buscar algo do bacno sem o index do fauna
+
 export default NextAuth({
 	providers: [
 		Providers.GitHub({
@@ -11,9 +13,10 @@ export default NextAuth({
 			scope: "read:user",
 		}),
 	],
-	jwt: {
-		signingKey: process.env.SIGNING_KEY,
-	},
+	// Em produção deve-se configurar isso (precisará gerar a chave com node-jose-tools)
+	// jwt: {
+	// 	signingKey: process.env.SIGNING_KEY,
+	// },
 	callbacks: {
 		async signIn(user, account, profile) {
 			const { email } = user;
@@ -26,12 +29,13 @@ export default NextAuth({
 							)
 						),
 						q.Create(q.Collection("users"), { data: { email } }),
-						q.Get(q.Match(q.Index("user_by_email"), q.Casefold(user.email)))
+						q.Get(q.Match(q.Index("user_by_email"), q.Casefold(user.email))) // ELSE DO IF
 					)
 				);
 
 				return true;
-			} catch {
+			} catch (err) {
+				console.log(err.message);
 				return false;
 			}
 		},
